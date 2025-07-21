@@ -30,29 +30,48 @@ model_api_key = "ENTER_API_KEY_HERE"
 proxy = ""
 # Set reverse-proxy-URL or custom-api-URL if you need. (e.g. Azure OpenAI)
 proxy_address = ""
+timeout = httpx.Timeout(120.0)   # 设置总超时时间为 60 秒
 
 
 # Plugin information, you can change the model here.
 if PLUGIN_NAME == "WPeChat-GPT":
     PROD_NAME = 'ChatGPT'
-    MODEL = 'gpt-4'
+    MODEL = 'gpt-4o-mini'
     print("WPeChatGPT is using ChatGPT.")
 elif PLUGIN_NAME == "WPeChat-DeepSeek":
     PROD_NAME = 'DeepSeek'
     MODEL = 'deepseek-chat'
     print("WPeChatGPT is using DeepSeek.")
+elif PLUGIN_NAME == "WPeChat-GEMINI":
+    PROD_NAME = 'GEMINI'
+    MODEL = 'gemini-2.5-flash'
+    print("WPeChatGPT is using GEMINI.")
+
 # Create openai client (python openai package version > 1.2)
 if PROD_NAME == "DeepSeek":
     client = openai.OpenAI(base_url="https://api.deepseek.com", api_key=model_api_key)
-elif proxy:
-    client = openai.OpenAI(http_client=httpx.Client(proxies=proxy, transport=httpx.HTTPTransport(local_address="0.0.0.0")), api_key=model_api_key)
-    print("WPeChatGPT has appointed the forward-proxy.")
-elif proxy_address:
-    client = openai.OpenAI(base_url=proxy_address, api_key=model_api_key)
-    print("WPeChatGPT has appointed the reverse-proxy.")
+
+elif PROD_NAME == 'ChatGPT':
+    if proxy:
+        transport = httpx.HTTPTransport(local_address="0.0.0.0")
+        http_client = httpx.Client(proxy=proxy, transport=transport, timeout=timeout)
+        client = openai.OpenAI(api_key=model_api_key, http_client=http_client)
+        print("WPeChatGPT has appointed the forward-proxy.")
+    elif proxy_address:
+        client = openai.OpenAI(base_url=proxy_address, api_key=model_api_key)
+        print("WPeChatGPT has appointed the reverse-proxy.")
+elif PROD_NAME == 'GEMINI':
+    if proxy:
+        transport = httpx.HTTPTransport(local_address="0.0.0.0")
+        http_client = httpx.Client(proxy=proxy, transport=transport, timeout=timeout)
+        client = openai.OpenAI(base_url="https://generativelanguage.googleapis.com/v1beta/openai/",api_key=model_api_key, http_client=http_client)
+        print("WPeChatGPT has appointed the forward-proxy.")
+    elif proxy_address:
+        client = openai.OpenAI(base_url=proxy_address, api_key=model_api_key)
+        print("WPeChatGPT has appointed the reverse-proxy.")
+
 else:
     client = openai.OpenAI(api_key=model_api_key)
-
 
 # WPeChatGPT 分析解释函数
 class ExplainHandler(idaapi.action_handler_t):
